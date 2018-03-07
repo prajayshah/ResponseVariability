@@ -17,7 +17,11 @@ def spikeCorr(sTimes, fs, delta, tList=None):
     if tList is None:
         tList = []
 
-    nTrials, nPoints = sTimes.shape
+    if type(sTimes) == list:
+        nTrials = len(sTimes)
+        nPoints = len(sTimes[0])
+    else:
+        nTrials, nPoints = sTimes.shape
 
     dlength = math.floor((delta/1000.)*fs)
     dfunc = [1.] * int(dlength)

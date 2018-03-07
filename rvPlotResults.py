@@ -87,7 +87,7 @@ def rvPlotResults(Dir, fname, dosave):
         T = np.array(range(0, nPoints-1))/(fs/wPoints)
         r, c = np.where(spBins[f] == 1)
         plt.style.use('ggplot')
-        plt.plot(T[c], r+1, 'k.', ms = 5)
+        plt.plot(T[c], r+1, 'k.', ms = 5)   # note: r+1 is just to raise the plot off of the 0 line
         plt.ylim(0, nTrials+1)
         plt.ylabel('Trial #')
         plt.xlabel('Time (secs)')
