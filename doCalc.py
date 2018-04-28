@@ -1,14 +1,15 @@
 import math
 import numpy as np
 from detect_peaks import *
+from freqDepGain import *
 
 def doCalc(V_1, I_1, si, ap):
 
     '''
-    :param V:       A single voltage trace
-    :param I:       A single current trace
-    :param si:      sampling interval in us calculated prior
-    :param ap:      analysis parameters dictionary
+    :param: V_1       A single voltage trace
+    :param: I_1       A single current trace
+    :param: si      sampling interval in us calculated prior
+    :param: ap      analysis parameters dictionary
     :return: STA
     :return: G
     :return: phi
@@ -56,13 +57,14 @@ def doCalc(V_1, I_1, si, ap):
         STA = np.array(STA)
 
         # if ap['rv']['computeGain'] == True:
-            # Perform the frequency dependent gain calculation --- still need to work hard to translate the freqDepGain function (goertzel algorithm) to python
-            # tind = np.where((T >= ap['rv']['prefix']) & (T < ap['rv']['prefix'] + ap['rv']['length']))
-            # voltage = V[tind]
-            # current = np.array(I)[tind]
-            # [G, phi, freq] = freqDepGain(voltage, current, fs, ap)
+        #     # Perform the frequency dependent gain calculation --- still need to work hard to translate the freqDepGain function (goertzel algorithm) to python
+        #     tind = np.where((T >= ap['rv']['prefix']) & (T < ap['rv']['prefix'] + ap['rv']['length']))
+        #     voltage = V_1[tind]
+        #     current = np.array(I_1)[tind]
+        #     [G, phi, freq] = freqDepGain(voltage, current, fs, ap)
     else:
-        STA = np.empty
+        STA = np.array([])
+        #STA = np.empty
 
 
     return STA, G, phi, freq, spBins

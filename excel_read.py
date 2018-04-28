@@ -52,7 +52,7 @@ def excel_read(dir, fname):
 
         c = 0
         for j in range(0, ncond):
-            ap[i]['cond.times'].append(ss.iloc[0,2:5].values.tolist())
+            ap[i]['cond.times'].append(ss.iloc[0,2+j])
             ap[i]['cond.names'].append(cond_names)
             ap[i]['cond.fname'].append(ss.iloc[0,1])
 
@@ -75,10 +75,13 @@ def excel_read(dir, fname):
         for j in range(0, len(ch)):
             chfnames.append(ch.iloc[0, 0])
 
-        ## rindex stuff that still needs to be coded in
+        ## reindex stuff that still needs to be coded in
 
         ap[i]['chlabels'] = ch.iloc[0:, 1:]
 
+        ## rename ap with appropriate keyname
+        fname = ap[i]['fname'][0][:-1]
+        ap[fname] = ap.pop(i)
 
     return ss, ap
 

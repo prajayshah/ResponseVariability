@@ -12,9 +12,7 @@ def excelReadChangeDir(Dir, filename):
 
     ss, ap = excel_read(Dir, filename)
 
-    nFiles = len(ap)
-
-    for i in range(0, nFiles):
+    for i in ap.keys():
         ap[i]['Dir'] = Dir
 
     return ap

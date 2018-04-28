@@ -15,9 +15,10 @@ def rvRunDir(dname, dosave = False):
     :return: sigma      Sigmas of the different files
     '''
 
-    DATA_DIR = 'C:\Users\praja\OneDrive\UT MDPhD'
+    #DATA_DIR = 'C:\Users\praja\OneDrive\UT MDPhD'
 
-    dpath = os.path.join(DATA_DIR, dname)
+    #dpath = os.path.join(DATA_DIR, dname)
+    dpath = dname # delete once stable, and replace dname in function definition
     d = []
     for i in os.listdir(dpath):         ## try to use glob.glob with this
         if i.endswith('.xlsx'):
@@ -31,15 +32,17 @@ def rvRunDir(dname, dosave = False):
     # analyse cell
     sCorr = {}; sCorrVec = {}; spBins = {}; R = {}
     for i in range(0, nFiles):
+        print('Opening... %s' % d[i])
         sCorr_, sCorrVec_, spBins_ = runCell_v2(dpath, d[i][:-5], False, False)
         sCorr[i] = sCorr_; sCorrVec[i] = sCorrVec_; spBins[i] = spBins_ #, R[i] = R_
 
-    # plot results
+
     pFiles = []
     for i in os.listdir(dpath):  ## try to use glob.glob with this
         if i.endswith('.pkl'):
             pFiles.append(i)
 
+    # plot results
     for file in pFiles:
         rvPlotResults(dpath, file[:-4], dosave=True)
 

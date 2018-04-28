@@ -37,7 +37,7 @@ def sl_sync_params():
                 'threshold': 20,        # Threshold for finding spikes
                 'spikeWidth': 2,        # width of the spike
                 'delta': 3,             # delta as per Galan for performing spike train correlations
-                'minSpikeRate': 0,      # Minimum spike rate in Hz. If lower than this abort analysis.
+                'minSpikeRate': 6,      # Minimum spike rate in Hz. If lower than this abort analysis.
                 'STAwindow': 30,        # Time window to keep for STA
                 'frange': 1000,         # Range of frequencies to compute frequency dependent gain
                 'computeGain': False,    # Toggle to computation to save time

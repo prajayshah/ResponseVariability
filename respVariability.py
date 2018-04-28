@@ -23,9 +23,9 @@ from doCalc import *
 
 def respVariability(dap, excelName, doplot = True, dosave = False):
 
-    dir = dap[0]['Dir'] + '/'
 
-    # dap = [18125012, 18125013]    # vector which contains the files of cells that need to be analysed
+    # set directory for these cells to be the directory of the first cell (since the rest of the cells should also be in the same directory)
+    dir = dap[dap.keys()[0]]['Dir'] + '/'
 
     ap = sl_sync_params()     # dictionary containing all of default analysis parameters - consider making ap it's own class object with attributes
 
@@ -58,6 +58,10 @@ def respVariability(dap, excelName, doplot = True, dosave = False):
                 a = bl.segments[i].analogsignals[vchan].__array__().tolist()
                 V[f].append([item for x in a for item in x])
             V[f] = np.array(V[f])
+            # adjust for the offset, if any, required for this cell
+            if 'Offset' in dap[f]['cond.names'][0]:
+                V[f] = V[f] + dap[f]['cond.times']
+
             I[f] = []  # numpy array of voltage recordings for all sweeps/segments - rows = sweeps, columns = data
             for i in range(0, len(bl.segments)):
                 a = bl.segments[i].analogsignals[ichan].__array__().tolist()
@@ -117,25 +121,30 @@ def respVariability(dap, excelName, doplot = True, dosave = False):
     # freq = freq[0]
 
     # compute the average spike rate across all trials
-    for i in spBins:
-        avgSpikeRate = sum(sum(spBins[i]))/nTrials*ap['rv']['length']
-        print('Average Spike Rate: %d Hz' % avgSpikeRate)
+    avgSpikeRate = {}
+    for f in files:
 
-    # If the average spike rate is less than an arbitrary amount send a warning and dont compute the correlations
+        spikecount = 0
+        for i in range(0, len(spBins[f])):
+            spikecount += sum(spBins[f][i])
 
-    if avgSpikeRate < ap['rv']['minSpikeRate']:
-        print('Average spike rate too low to perform analyses')
+        avgSpikeRate[f] = spikecount / nTrials * ap['rv']['length']
+        print('Average Spike Rate: %d Hz' % avgSpikeRate[f])
 
-    # Do spike correlations
     sCorr = {}; sCorrVec = {}
     for f in files:
-        sCorr_, sCorrVec_ = spikeCorr(spBins[f], fs/wPoints, ap['rv']['delta'])        # note that the pearson correlation values are slightly discordant between Matlab and python
-        sCorr[f] = sCorr_; sCorrVec[f] = sCorrVec_
+        # If the average spike rate is less than an arbitrary amount send a warning and dont compute spike correlation
+        if avgSpikeRate[f] < ap['rv']['minSpikeRate']:
+            print('Average spike rate too low to perform analyses')
+        else:
+            # Do spike correlations
+            sCorr_, sCorrVec_ = spikeCorr(spBins[f], fs/wPoints, ap['rv']['delta'])        # note that the pearson correlation values are slightly discordant between Matlab and python
+            sCorr[f] = sCorr_; sCorrVec[f] = sCorrVec_
 
     # save results
     pickle.dump([sCorr, sCorrVec, V, I, spBins, dap, fs, wPoints, STA,
                  avgSpikeRate, G, phi, freq],
-                open(str(os.path.join(dap[0]['Dir'], '%s_results.pkl' % excelName)), 'wb'))
+                open(str(os.path.join(dap[dap.keys()[0]]['Dir'], '%s_results.pkl' % excelName)), 'wb'))
 
 
     return sCorr, sCorrVec, spBins #, R
