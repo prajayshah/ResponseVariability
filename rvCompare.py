@@ -1,8 +1,10 @@
-# combines the results from multiple cells
+# combines and compares the results from multiple cells and produces plots
+# TODO test rvCompare on multiple cells
 
 import os
 import pickle
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -10,17 +12,26 @@ from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
 from spikeCorr import *
 from sl_sync_params import *
+from rand_cmap import *
 
-def rvCompare():
+def rvCompare(files):
+
+    '''
+
+    :param files:       List of directory paths which contain file results of cells to compare
+    :return:            Plots
+
+    '''
 
     ap = sl_sync_params()
 
-    # specify and find files of interest
-    dFile = []
-    dFile.append('C:\Users\praja\OneDrive\UT MDPhD\White noise\Human tissue\Jan 25, 2018\Cell 3\Gain 20')  # insert full paths to cells
+    # specify and find files of interest - only for developing code
+    # files = []
+    # files.append('C:\Users\praja\OneDrive\UT MDPhD\White noise\Human tissue\Jan 25, 2018\Cell 3\Gain 20')  # insert full paths to cells
 
+    ##
     fpaths = []
-    for path in dFile:
+    for path in files:
         for i in os.listdir(path):  ## try to use glob.glob with this
             if i.endswith('.pkl'):
                 fpaths.append(os.path.join(path, i))
@@ -44,42 +55,64 @@ def rvCompare():
             cell2trials.extend([j] * spBins_[j].shape[0])
             nTrials += spBins_[j].shape[0]
             nPoints = spBins_[j].shape[1]
+            V[j] = V_[j]
+            I[j] = I_[j]
 
 
-    cells = spBins.keys(); colors = dict(zip(cells, ['orange', 'yellow', 'brown']))
+    cells = spBins.keys(); colors = dict(zip(cells, ['orange', 'brown']))       # specify which colors to use for plotting individual cells
+    # TODO add random selection of colors from a pre-specified pallate
+
+    # random color map generation - I think this is a good one to use from here on out
+    color = rand_cmap(len(cells), type='bright', first_color_black=False, verbose=False)
+    color_cells = {}
+    for i in range(len(cells)):
+        color_cells[cells[i]] = color(i)
+
+
     # for cell in spBins.keys():
     #     colors[cell] = [colormap(i) for i in np.linspace(0, 0.9, len(spBins.keys()))][cells.index(cell)]
     row_colors = []
     for i in cell2trials:
-        row_colors.append(colors[i])
+        row_colors.append(color_cells[i])
 
 
-
-    # plot Raster
-    plt.figure()
-    plt.style.use('ggplot')
+    ## plot Raster of all cells
+    #plt.style.use('ggplot')
+    f, ax = plt.subplots(len(cells), 1, sharex=True)
     T = np.array(range(0, nPoints - 1)) / (fs / wPoints)
-    trials = 0   # ticker that counts trials from a cell to help make sure the next cell goes on the trials after the preceeding cell
-    for cell in spBins.keys():
-        r = np.where(spBins[cell] == 1)[0] + trials
+    # gs1 = gridspec.GridSpec(4, 4)
+    # gs1.update(wspace=0.025, hspace=0.05)  # set the spacing between axes.
+    #
+
+    f.subplots_adjust(hspace=0, wspace=0)
+
+    for cell in cells:
+        r = np.where(spBins[cell] == 1)[0] #+ trials
         c = np.where(spBins[cell] == 1)[1]
-        plt.plot(T[c], r + 1, 'k.', ms=5, color = colors[cell])
-        trials += spBins[cell].shape[0]     # update ticker with number of trials from the current cell
-    plt.ylim(0, nTrials + 1)
-    plt.ylabel('Trials')
-    plt.xlabel('Time (secs)')
-    plt.title('Raster of %d cells' % len(spBins.keys()))
+        ax[cells.index(cell)].plot(T[c], r + 1, 'k.', ms=5, color=color_cells[cell])
+        #ax[cells.index(cell)].plot(T[c], r + 1, 'k.', ms=5, color=color(cells.index(cell)))
+
+        # previous attempts at controlling color of cell raster - can delete as long as current one is stable across MANY more cells
+        # ax[cells.index(cell)].plot(T[c], r + 1, 'k.', ms=5)
+        # ax[cells.index(cell)].plot(T[c], r + 1, 'k.', ms=5, color=colors[cell])
+
+    for i in ax:
+        i.set_ylabel('Trial #')
+        trials = len(spBins[cells[ax.tolist().index(i)]])
+        i.set_ylim([0, trials + 1])
+    ax[-1].set_xlabel('Time (secs)')
+    f.suptitle('Raster of %d cells' % len(cells))
     plt.show()
 
-    # organize trials into a single array
+    ## organize trials into a single array for subsequent PCA analysis
     allspBins = []
     for i in cells:
         for j in range(len(spBins[i])):
             allspBins.append(spBins[i][j])
 
     # PCA calculation on all trials together
-    pca = PCA(n_components=10).fit(allspBins)
-    result = pd.DataFrame(pca.transform(allspBins), columns=['PCA%i' % i for i in range(10)])
+    pca = PCA(n_components=len(allspBins)).fit(allspBins)
+    result = pd.DataFrame(pca.transform(allspBins), columns=['PCA%i' % i for i in range(len(allspBins))])
 
     # Plot PCA
     fig = plt.figure()
@@ -88,7 +121,7 @@ def rvCompare():
     for cell in cells:
         ntrial = spBins[cell].shape[0]
         ax.scatter(result.iloc[trials:trials+ntrial]['PCA0'], result.iloc[trials:trials+ntrial]['PCA1'], result.iloc[trials:trials+ntrial]['PCA2'], cmap="Set2_r", s=60,
-                   color=colors[cell])
+                   color=color_cells[cell])
         trials += ntrial
     # make simple, bare axis lines through space:
     xAxisLine = ((min(result['PCA0']), max(result['PCA0'])), (0, 0), (0, 0))
@@ -105,13 +138,13 @@ def rvCompare():
 
     plt.show()
 
-    # spike correlations across all trials in comparison
+
+    ## calculate spike correlations across all trials in comparison
     sCorr, sCorrVec = spikeCorr(allspBins, fs/wPoints, ap['rv']['delta'])
 
-    # plot correlations of all trials
-    plt.figure()
-    sns.clustermap(sCorr, cmap='Greens', row_cluster=True, col_cluster= False, vmin=0, vmax=0.5, row_colors=row_colors)
-    # add title and cell labels on axes
+    ## plot correlations of all trials
+    sns.clustermap(sCorr, cmap='Greens', row_cluster=False, col_cluster= False, vmin=0, vmax=0.5, row_colors=row_colors)
+
 
 
 
