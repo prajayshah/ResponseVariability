@@ -3,7 +3,7 @@
 
 import numpy as np
 
-def sl_sync_params():
+def sl_sync_params_v2():
     ap = {}
 
     #######
@@ -12,21 +12,26 @@ def sl_sync_params():
     ap['Dir'] = ''
     ap['ExportDir'] = ''
     ap['fname'] = ''
-    ap['comment'] = ''
+    ap['comment'] = '' # general experiment description
 
-    # ---- Condition information
-    ap['cond.fname'] = []
-    ap['cond.names'] = []
-    ap['cond.times'] = []
-    ap['chlabels'] = []
+    # ---- Condition/stimulus information
+    ap['cond.gain'] = int
+    ap['cond.dc'] = str
+    ap['cond.protocol'] = ''
+
+
+    # ---- Cell information
+    ap['cell.date'] = ''  # date that cell was recorded
+    ap['cell.type'] = '' # relevant description of cell type
+    ap['cell.species'] = '' # species of the cell
+    ap['cell.exp_condition'] = '' # experimental condition of the cell
 
     # ---- Channel information
     ap['ch'] = 1        # Channel to analyse
 
 
     # ---- Special fields
-    ap['sf'] = {'names': ['Comment', 'ExportDir', 'Tags', 'GroupInc'],
-                'vals': []}
+    ap['sf.RMP_offset'] = '' # offset of the RMP
 
 
     # Response Variability

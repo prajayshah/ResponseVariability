@@ -25,8 +25,8 @@ def rvPlotResults(Dir, fname, dosave = None):
     # ----
 
     # example file:
-    # fname = 'cell3_3_75_results'
-    # Dir = 'C:\Users\praja\OneDrive\UT MDPhD\White noise\Human tissue\March 20, 2018\Second cae\Cell 1\Gain 20'
+    # fname = 'cell2_3_50_results'
+    # Dir = 'C:\Users\praja\OneDrive\UT MDPhD\White noise\Human tissue\Jan 29, 2018\Cell 2\Gain 20'
 
     # load up the results files
     sCorr, sCorrVec, V, I, spBins, dap, fs, wPoints, STA, \
@@ -57,12 +57,13 @@ def rvPlotResults(Dir, fname, dosave = None):
                 axes[i+1].set_ylabel('mV')
             plt.xlim(min(t[ind]), max(t[ind]))
             plt.suptitle("Cell# %s" % f)
-            plt.show()
+            fig.show()
 
 
             # plot correlation per cell
             plt.figure()
             sns.heatmap(sCorr[f], cmap='Greens', vmin=0, vmax=0.5)
+
 
             # plot STA
             plt.figure()
@@ -84,6 +85,7 @@ def rvPlotResults(Dir, fname, dosave = None):
             plt.xlabel("Time before peak of spike (ms)")
             plt.ylabel("Stimulus (pA)")
 
+
             # plot Raster
             plt.figure()
             nTrials, nPoints = spBins[f].shape
@@ -95,7 +97,7 @@ def rvPlotResults(Dir, fname, dosave = None):
             plt.ylabel('Trial #')
             plt.xlabel('Time (secs)')
             plt.title('Raster (avg freq = %s Hz)' % avgSpikeRate)
-            plt.show()
+
 
             # plot PCA
             # calculate PCA with as many components as trials in this cell
@@ -118,7 +120,7 @@ def rvPlotResults(Dir, fname, dosave = None):
             ax.set_zlabel("PC3")
             ax.set_title("PCA %s" % f)
 
-            plt.show()
+            fig.show()
         else:
             print("plots not made for cell %s" % f)
 

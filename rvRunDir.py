@@ -33,8 +33,14 @@ def rvRunDir(dname, dosave = False):
     sCorr = {}; sCorrVec = {}; spBins = {}; R = {}
     for i in range(0, nFiles):
         print('Opening... %s' % d[i])
+
         sCorr_, sCorrVec_, spBins_ = runCell_v2(dpath, d[i][:-5], False, False)
-        sCorr[i] = sCorr_; sCorrVec[i] = sCorrVec_; spBins[i] = spBins_ #, R[i] = R_
+        sCorr[i] = sCorr_; sCorrVec[i] = sCorrVec_; spBins[i] = spBins_
+
+
+        print('finished analyzing %s .... ' % d[i])
+        print('')
+        print('')
 
 
     pFiles = []
@@ -43,9 +49,12 @@ def rvRunDir(dname, dosave = False):
             pFiles.append(i)
 
     # plot results
-    for file in pFiles:
-        rvPlotResults(dpath, file[:-4], dosave=True)
+    # for file in pFiles:
+    #     rvPlotResults(dpath, file[:-4], dosave=True)
 
+
+    print('')
+    print('Done!')
 
     # if dosave == True:
 

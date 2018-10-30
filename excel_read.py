@@ -16,18 +16,18 @@ def excel_read(dir, fname):
 
     full_path = os.path.join(dir, fname + '.xlsx')
 
-    ss = pd.read_excel(full_path, sheetname='Sheet1')
+    ss = pd.read_excel(full_path, sheet_name='Sheet1')
 
     # read in SHEET 2 - channel assignments
-    ch = pd.read_excel(full_path, sheetname='Sheet2')
+    ch = pd.read_excel(full_path, sheet_name='Sheet2')
 
     if ss.count().sum() < 3:
         # There must be more than just a Dir and (un-named) filename field
         raise ValueError('Not enough fields.')
 
-    # get number of conditions and files
+    # get number of conditions and files - what is number of conditions? which conditions?
     nfiles, a = ss.shape
-    ncond = (a-6)/3
+    ncond = (a-6)//3
 
     # get the condition names - needs work!
     cond_names = []
@@ -57,31 +57,41 @@ def excel_read(dir, fname):
             ap[i]['cond.fname'].append(ss.iloc[0,1])
 
         # get the special fields
+        # c = 0
+        # ap[i]['sf']['names'] = []
+        # for j in range(0, len(sf_names)):
+        #     for x in sf_index:
+        #         ap[i]['sf']['names'].append(sf_names[j])
+        #         ap[i]['sf']['vals'].append(ss.values[0][x])
+
+        # get the special fields
         c = 0
-        ap[i]['sf']['names'] = []
-        for j in range(0, len(sf_names)):
-            for x in sf_index:
-                ap[i]['sf']['names'].append(sf_names[j])
-                ap[i]['sf']['vals'].append(ss.values[0][x])
+        #ap[i]['sf']['names'] = [sf_names]
+        # for name in sf_names:
+        #     ap[i]['sf'][name] = ss.values[0][sf_names.index(name)]
+        for x in sf_index:
+            ap[i]['sf'][sf_names[x-sf_index[0]]] = ss.values[0][x]
+            #ap[i]['sf']['names'].append(sf_names)
+            #ap[i]['sf']['vals'].append(ss.values[0][x])
 
-        # Set the channel to analyze
-        ap[i]['ch'] = ss['AnChan'].values[0]
+    # Set the channel to analyze
+    ap[i]['ch'] = ss['AnChan'].values[0]
 
-        # Get the channel labels from the table (sheet 2). If there are multiple files
-        # for the same slice, it is assumed that the channel assignments did not change
-        # during the experiment
+    # Get the channel labels from the table (sheet 2). If there are multiple files
+    # for the same slice, it is assumed that the channel assignments did not change
+    # during the experiment
 
-        chfnames = []
-        for j in range(0, len(ch)):
-            chfnames.append(ch.iloc[0, 0])
+    chfnames = []
+    for j in range(0, len(ch)):
+        chfnames.append(ch.iloc[0, 0])
 
-        ## reindex stuff that still needs to be coded in
+    ## reindex stuff that still needs to be coded in
 
-        ap[i]['chlabels'] = ch.iloc[0:, 1:]
+    ap[i]['chlabels'] = ch.iloc[0:, 1:]
 
-        ## rename ap with appropriate keyname
-        fname = ap[i]['fname'][0][:-1]
-        ap[fname] = ap.pop(i)
+    ## rename ap with appropriate keyname
+    fname = ap[i]['fname'][0][:-1]
+    ap[fname] = ap.pop(i)
 
     return ss, ap
 

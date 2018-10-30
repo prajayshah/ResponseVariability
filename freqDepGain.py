@@ -1,8 +1,9 @@
 import numpy as np
 from scipy.signal import correlate
 from goertzel import *
+from detect_peaks import *
 
-fs = 1/siSec
+#fs = 1/siSec
 
 def freqDepGain(V, I, fs, ap):
     nPoints = len(V)
@@ -10,7 +11,7 @@ def freqDepGain(V, I, fs, ap):
     spInd = detect_peaks(V, mph=ap['rv']['threshold'])
     r[spInd] = fs
 
-    # compute the correlations as per eqs 10 & 11
+    # compute the correlations as per eqs 10 & 11 from Higgs and Spain, 2008, J Neurosci
     csr = correlate(r, I, mode='full')
     tau = np.argmax(csr)    ## TROUBLESHOOT!!!! not same as matlab for some reason...
     css = np.correlate(I, I, mode='full')
@@ -21,8 +22,8 @@ def freqDepGain(V, I, fs, ap):
     N = len(csr)    # length of the CSR function
 
     # calculate the dft for each specific frequency
-    CSS = np.zeros(shape = (len(freq),3))
-    CSR = np.zeros(shape = (len(freq),3))
+    CSS = np.zeros(shape = (len(freq), 3))
+    CSR = np.zeros(shape = (len(freq), 3))
 
     for i in range(0, len(freq)):
         w = wind(freq[i], tau/fs)

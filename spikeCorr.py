@@ -34,7 +34,7 @@ def spikeCorr(sTimes, fs, delta, tList=None):
     if len(tList) == 0:
         c = 0
         sCorr = np.array([[0.] * nTrials] * nTrials)
-        sCorrVec = [0.] * (nTrials*(nTrials-1)/2)
+        sCorrVec = [0.] * int(nTrials*(nTrials-1)/2)
         for i in range(0, nTrials):
             for j in range((i+1), nTrials):
                 r, prob = pearsonr(sconv[i], sconv[j])
