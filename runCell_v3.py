@@ -1,11 +1,15 @@
 from pynwb import NWBHDF5IO
-from sl_sync_params_v2 import *
+
 import math
 import numpy as np
+import pickle
+import pandas as pd
+import datetime
+
+from sl_sync_params_v2 import *
 from spikeCorr import *
 from doCalc import *
-import pickle
-import os
+from rvCompare import *
 
 def readNWBpatchClamp(fpath):
 
@@ -26,7 +30,6 @@ def readNWBpatchClamp(fpath):
     return nwbfile, ccss, ccs, current_stimulus, current_clamp
 
 
-fpath='/Volumes/HD1/White_noise/Human_tissue/Epilepsy cases/nwb files/18220020.nwb'
 # read NWB file of cell and return necessary dap object
 def NWBread(fpath, export_dir=str):
 
@@ -53,13 +56,13 @@ def NWBread(fpath, export_dir=str):
 
 
     # ---- Special fields
-    ap['sf.RMP_offset'] = nwbfile.notes.split()[-1]  # offset of the RMP
+    ap['sf.RMP_offset'] = int(nwbfile.notes.split()[-1])  # offset of the RMP
 
 
     return ap, nwbfile, current_clamp, current_stimulus
 
-
-def respVariability(fpath, export_dir=str):
+# perform response variability calculations
+def respVariability(fpath, export_dir=''):
 
 
     #
@@ -149,10 +152,27 @@ def respVariability(fpath, export_dir=str):
     # save results
     pickle.dump([sCorr, sCorrVec, V, I, spBins, ap, fs, wPoints, STA,
                  avgSpikeRate, G, phi, freq],
-                open(str(os.path.join(ap[[*dap][0]]['Dir'], '%s_results.pkl' % excelName)), 'wb'))
+                open((export_dir + cell_id + '_results.pkl'), 'wb'))
 
 
-    return sCorr, sCorrVec, spBins #, R
+    # ------- UPDATE .csv file of Response Variability Results
+    df = pd.read_csv('/Volumes/HD1/White_noise/ResponseVariabilityCells.csv')
+
+    df_append = df.append({'cell_id': cell_id,
+                           'exp_condition': ap['cell.exp_condition'],
+                           'cell_type': ap['cell.type'],
+                           'gain': ap['cond.gain'],
+                           'dc': ap['cond.dc'],
+                           'firing rate': avgSpikeRate[cell_id],
+                           'analysis_date': datetime.datetime.now().strftime("%I:%M%p %B %d, %Y")
+                           }, ignore_index = True)
+
+
+    df_append.to_csv('/Volumes/HD1/White_noise/ResponseVariabilityCells.csv')
+
 ##
+
+def runCell(fpath, export_dir):
+    respVariability(fpath, export_dir=export_dir)
 
 

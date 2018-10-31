@@ -3,18 +3,18 @@
 import os
 import pickle
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-import numpy as np
+# import matplotlib.gridspec as gridspec
+# import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from mpl_toolkits.mplot3d import Axes3D
 from spikeCorr import *
-from sl_sync_params import *
+from sl_sync_params_v2 import *
 from generate_random_color import *
 
-def rvCompare(files, cells_of_interest = []):
+def rvCompare(files = [], cells_of_interest = []):
 
     '''
 
@@ -23,31 +23,30 @@ def rvCompare(files, cells_of_interest = []):
 
     '''
 
-    ap = sl_sync_params()
+    ap_2 = sl_sync_params_v2()
 
     # specify and find files of interest - only for developing code
-    # files = []
-    # files.append('C:\Users\praja\OneDrive\UT MDPhD\White noise\Human tissue\Jan 25, 2018\Cell 3\Gain 20')  # insert full paths to cells
+    files = []; cells_of_interest = ['18o22014', '18220020']
+    files.append('/Volumes/HD1/White_noise/Human_tissue/Epilepsy cases/results/')  # insert full paths to cells
+    files.append('/Volumes/HD1/White_noise/Human_tissue/Tumor cases/results/')
 
     ##
     fpaths = []
-    for path in [files]:
+    for path in files:
         for i in os.listdir(path):  ## try to use glob.glob with this
             if i.endswith('.pkl'):
                 fpaths.append(os.path.join(path, i))
 
     # load up the results files for the first recording (to initialize the necessary results which are in dictionary formats)
-    sCorr, sCorrVec, V, I, spBins, dap, fs, wPoints, STA, avgSpikeRate, G, phi, freq = pickle.load(open(fpaths[0], 'rb'))
+    initial = fpaths[0]
+    print('Loading...%s' % initial)
+    sCorr, sCorrVec, V, I, spBins, dap, fs, wPoints, STA, avgSpikeRate, G, phi, freq = pickle.load(open(initial, 'rb'))
+    ap = {dap['fname']: dap}
 
-    # what is spBins??
-
-    # spBins =
-
-
-    cell_name = [*spBins][0]
+    cell_name = dap["fname"]
     nTrials = spBins[cell_name].shape[0]
     cell2trials = [cell_name] * nTrials
-
+    nPoints = spBins[cell_name].shape[1]
 
     # use a loop to gather results from remaining recordings, and add to spBins dictionary as an additional result under the appropriate recording name
     for i in fpaths[1:]:
@@ -60,114 +59,18 @@ def rvCompare(files, cells_of_interest = []):
             spBins[j] = spBins_[j]
             cell2trials.extend([j] * spBins_[j].shape[0])
             nTrials += spBins_[j].shape[0]
-            nPoints = spBins_[j].shape[1]
             V[j] = V_[j]
             I[j] = I_[j]
-            dap[j] = dap_[j]
+            ap[j] = dap_
             freq[j] = freq_[j]
             avgSpikeRate[j] = avgSpikeRate_[j]
 
 
-
-    cells = [*spBins]
-
-    # ==================================================================================================================
-    # Filter cells to analyze
-    # ==================================================================================================================
-
-
-    # identify human cells
-    human_cells = []
-    for cell in cells:
-        if 'Human' in dap[cell]['Dir']:
-            human_cells.append(cell)
-
-    # identify mouse cells
-    mouse_cells = []
-    for cell in cells:
-        if 'Mouse' in dap[cell]['Dir']:
-            mouse_cells.append(cell)
-
-    # order cells by human first and mouse cells second
-    all_cells = human_cells + mouse_cells
-
-    # identify one recording to use for each cell
-    cells = [] # note cells here refers to recordings (1 per cell)
-    ## gather the directories of each recordings
-    dirs_abf = {}
-    for cell in all_cells:  # initialize dictionary with lists as entries for each directory
-        dirs_abf[dap[cell]['Dir']] = []
-    for cell in all_cells:  # fill each entry of dictionary with respective recordings
-        dirs_abf[dap[cell]['Dir']].append(cell)
-    ## select the recordings within a certain spiking frequency (and max spiking frequency if there is multiple)
-    for i in dirs_abf.keys():
-        freqs = []
-        for x in dirs_abf[i]:
-            freqs.append(avgSpikeRate[x])
-        j = [a for a in freqs if 6 < a < 8]
-        if len(j) > 0:
-            k = freqs.index(max(j))
-            cells.append(dirs_abf[i][k])
-
-
-
-    # separate analysis by gain
-    Gain20_cells = []
-    for cell in all_cells:
-        if 1 < avgSpikeRate[cell]:
-            if 'Gain 20' in dap[cell]['Dir']:
-                Gain20_cells.append(cell)
-            elif 'Gain 20' in dap[cell]['sf']['Tags']:
-                Gain20_cells.append(cell)
-
-    Gain40_cells = []
-    for cell in all_cells:
-        if 1 < avgSpikeRate[cell]:
-            if 'Gain 40' in dap[cell]['Dir']:
-                Gain40_cells.append(cell)
-            elif 'Gain 40' in dap[cell]['sf']['Tags']:
-                Gain40_cells.append(cell)
-
-    # separate analysis by gain
-    L2_3 = []
-    for cell in cells:
-        if any(s in dap[cell]['Dir'] for s in ('Feb 20, 2018', 'March 20, 2018', 'March 29, 2018', 'April 17,  2018', 'April 26, 2018')):
-            L2_3.append(cell)
-
-    MsL5 = mouse_cells
-
-    HuL5 = []
-    for cell in cells:
-        if any(s in dap[cell]['Dir'] for s in ('Jan 29, 2018', 'Jan 25, 2018', 'Feb 01, 2018')):
-            HuL5.append(cell)
-
-
-    # identify cells within a set frequency range - not necessary since this is being done earlier
-    Hz5_10_cells = cells
-    Hz6_8_cells = cells
-    Hz6_8_cells = []
-    for cell in cells:
-        if cell in MsL5:
-            Hz6_8_cells.append(cell)
-        elif cell in HuL5:
-            Hz6_8_cells.append(cell)
-
-    # Hz5_10_cells = []
-    # for cell in all_cells:
-    #     if 5 < avgSpikeRate[cell] < 10:
-    #         Hz5_10_cells.append(cell)
-
     # cells of particular interest
 
     cells_to_analyze = cells_of_interest
-
-
-
-
-    # set up cells to analyze
-    # cells_to_analyze = [*spBins]
-
-    # cells_to_analyze = all_cells
+    if len(cells_to_analyze) == 0:
+        cells_to_analyze = [*spBins]
 
     ## organize trials into a single array for analysis
     allspBins = []
@@ -182,12 +85,12 @@ def rvCompare(files, cells_of_interest = []):
 
     # generate_random_colors and assign to individual recordings
     colors = []
-    for i in range(0, len(all_cells)):
+    for i in range(0, len(cells_to_analyze)):
         colors.append(generate_new_color(colors, pastel_factor=0.2))
 
     color_cells = {}
-    for i in range(0, len(all_cells)):
-        color_cells[all_cells[i]] = colors[i]
+    for i in range(0, len(cells_to_analyze)):
+        color_cells[cells_to_analyze[i]] = colors[i]
 
 
     ##
@@ -198,7 +101,7 @@ def rvCompare(files, cells_of_interest = []):
     print('Plotting Raster')
     # ==================================================================================================================
     plt.style.use('seaborn-white')
-    fig, ax = plt.subplots(len(cells_to_analyze), 1, sharex=True)
+    fig, ax = plt.subplots(len(cells_to_analyze), 1, sharex=True, squeeze=False)
     T = np.array(range(0, nPoints - 1)) / (fs / wPoints)
 
     fig.subplots_adjust(hspace=0, wspace=0)
@@ -206,7 +109,7 @@ def rvCompare(files, cells_of_interest = []):
     for cell in cells_to_analyze:
         r = np.where(spBins[cell] == 1)[0] #+ trials
         c = np.where(spBins[cell] == 1)[1]
-        ax[cells_to_analyze.index(cell)].plot(T[c], r + 1, 'k.', ms=5, color=color_cells[cell])
+        ax[cells_to_analyze.index(cell), 0].plot(T[c], r + 1, 'k.', ms=5, color=color_cells[cell])
 
 
     for i in range(len(ax)):
@@ -222,16 +125,17 @@ def rvCompare(files, cells_of_interest = []):
         #     ax[i].yaxis.label.set_color('red')
 
 
-        ax[i].yaxis.set_label_coords(-0.05, 0.40)
+        #ax[i].yaxis.set_label_coords(-0.05, 0.40)
+
         trials = len(spBins[cells_to_analyze[i]])
-        ax[i].set_ylim([0, trials + 1])
-        ax[i].set_yticklabels([])
-        ax[i].spines['left'].set_visible(False)
-        ax[i].spines['right'].set_visible(False)
-        ax[i].spines['top'].set_visible(False)
-    ax[len(cells_to_analyze)-1].set_xlabel('Time (secs)')
-    ax[len(cells_to_analyze)-1].set_xlim(T.min(), T.max())
-    fig.suptitle('Raster of %d cells, cells in red number are human' % len(cells_to_analyze))
+        ax[i,0].set_ylim(0, trials + 1)
+        ax[i,0].set_yticklabels([])
+        ax[i,0].spines['left'].set_visible(False)
+        ax[i,0].spines['right'].set_visible(False)
+        #ax[i,0].spines['top'].set_visible(False)
+    ax[len(cells_to_analyze)-1,0].set_xlabel('Time (secs)')
+    ax[len(cells_to_analyze)-1,0].set_xlim(T.min(), T.max())
+    fig.suptitle('Raster of %d cells' % len(cells_to_analyze))
     fig.show()
 
     # ==================================================================================================================
@@ -249,19 +153,19 @@ def rvCompare(files, cells_of_interest = []):
     ax = Axes3D(fig)
     trials = 0  # ticker that counts trials from a cell to help make sure the next cell goes on the trials after the preceeding cell
     for cell in cells_to_analyze:
-        if cell in L2_3:
+        if cell in []:
             ntrial = spBins[cell].shape[0]
             ax.scatter(result.iloc[trials:trials + ntrial]['PCA0'], result.iloc[trials:trials + ntrial]['PCA1'],
                        result.iloc[trials:trials + ntrial]['PCA2'],
                        cmap="Set2_r", s=60, marker='v',
                        color=color_cells[cell])
-            # draw border around human cells (in order to allow comparison with mouse cells)
-            if cell in human_cells:
-                ntrial = spBins[cell].shape[0]
-                ax.scatter(result.iloc[trials:trials + ntrial]['PCA0'], result.iloc[trials:trials + ntrial]['PCA1'],
-                           result.iloc[trials:trials + ntrial]['PCA2'],
-                           cmap="Set2_r", s=60, marker='v', facecolors='none', edgecolors='black', linewidths=1.5,
-                           color=color_cells[cell])
+            # draw border around human cells (in order to allow comparison with mouse cells) - disabled
+            # if cell in human_cells:
+            #     ntrial = spBins[cell].shape[0]
+            #     ax.scatter(result.iloc[trials:trials + ntrial]['PCA0'], result.iloc[trials:trials + ntrial]['PCA1'],
+            #                result.iloc[trials:trials + ntrial]['PCA2'],
+            #                cmap="Set2_r", s=60, marker='v', facecolors='none', edgecolors='black', linewidths=1.5,
+            #                color=color_cells[cell])
 
 
         else:
@@ -269,13 +173,13 @@ def rvCompare(files, cells_of_interest = []):
             ax.scatter(result.iloc[trials:trials+ntrial]['PCA0'], result.iloc[trials:trials+ntrial]['PCA1'], result.iloc[trials:trials+ntrial]['PCA2'],
                        cmap="Set2_r", s=60,
                        color=color_cells[cell])
-            # draw border around human cells (in order to allow comparison with mouse cells)
-            if cell in human_cells:
-                ntrial = spBins[cell].shape[0]
-                ax.scatter(result.iloc[trials:trials + ntrial]['PCA0'], result.iloc[trials:trials + ntrial]['PCA1'],
-                           result.iloc[trials:trials + ntrial]['PCA2'],
-                           cmap="Set2_r", s=60, facecolors='none', edgecolors='black', linewidths=1.5,
-                           color=color_cells[cell])
+            # draw border around human cells (in order to allow comparison with mouse cells) - disabled for now
+            # if cell in human_cells:
+            #     ntrial = spBins[cell].shape[0]
+            #     ax.scatter(result.iloc[trials:trials + ntrial]['PCA0'], result.iloc[trials:trials + ntrial]['PCA1'],
+            #                result.iloc[trials:trials + ntrial]['PCA2'],
+            #                cmap="Set2_r", s=60, facecolors='none', edgecolors='black', linewidths=1.5,
+            #                color=color_cells[cell])
         trials += ntrial
 
 
@@ -307,7 +211,7 @@ def rvCompare(files, cells_of_interest = []):
     # ==================================================================================================================
 
     ## calculate spike correlations across all trials in comparison - NOTE: allspBins was set earlier
-    sCorr, sCorrVec = spikeCorr(allspBins, fs/wPoints, ap['rv']['delta'])
+    sCorr, sCorrVec = spikeCorr(allspBins, fs/wPoints, ap_2['rv']['delta'])
 
 
     ## determine row colors to use
@@ -323,27 +227,27 @@ def rvCompare(files, cells_of_interest = []):
     for i in range(3):
         colors2.append(generate_new_color(colors2, pastel_factor=0.2))
 
-    color_cells2 = {}
-    for i, cell in enumerate(all_cells):
-        if cell in HuL5:
-            color_cells2[cell] = colors2[0]
-        elif cell in L2_3:
-            color_cells2[cell] = colors2[1]
-        elif cell in MsL5:
-            color_cells2[cell] = colors2[2]
+    # color_cells2 = {}
+    # for i, cell in enumerate(all_cells):
+    #     if cell in HuL5:
+    #         color_cells2[cell] = colors2[0]
+    #     elif cell in L2_3:
+    #         color_cells2[cell] = colors2[1]
+    #     elif cell in MsL5:
+    #         color_cells2[cell] = colors2[2]
 
-    row_colors2 = []
-    for i in cell2trials:
-        row_colors2.append(color_cells2[i])
+    # row_colors2 = []
+    # for i in cell2trials:
+    #     row_colors2.append(color_cells2[i])
 
     ## plot correlations of all trials
     sCorr[np.isnan(sCorr)] = 0 # needed to avoid Linkage 'Z' contains negative counts error - that seems to be due to either NaN values in the dataframe or very long floats that are close to zero
     sCorr_t = sCorr + sCorr.T - np.diag(np.diag(sCorr))
 
-    # with heirachical clustering
-    sns.clustermap(sCorr_t, cmap='Greens', row_cluster=True, col_cluster=True, vmin=0, vmax=1, row_colors=[row_colors, row_colors2])
-    plt.show()
-    # w/o heirarchical clustering
+    # # with heirachical clustering
+    # sns.clustermap(sCorr_t, cmap='Greens', row_cluster=True, col_cluster=True, vmin=0, vmax=1, row_colors=[row_colors, row_colors2])
+    # plt.show()
+    # # w/o heirarchical clustering
     sns.clustermap(sCorr_t, cmap='Greens', row_cluster=False, col_cluster=False, vmin=0, vmax=1, row_colors=[row_colors])
     plt.show()
 
@@ -364,19 +268,19 @@ def rvCompare(files, cells_of_interest = []):
     ax = Axes3D(fig)
     trials = 0  # ticker that counts trials from a cell to help make sure the next cell goes on the trials after the preceeding cell
     for cell in cells_to_analyze:
-        if cell in L2_3:
+        if cell in []:
             ntrial = spBins[cell].shape[0]
             ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
                        result.iloc[trials:trials + ntrial]['tSNE2'],
                        cmap="Set2_r", s=60, marker='v',
                        color=color_cells[cell])
-            # draw border around human cells (in order to allow comparison with mouse cells)
-            if cell in human_cells:
-                ntrial = spBins[cell].shape[0]
-                ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
-                           result.iloc[trials:trials + ntrial]['tSNE2'],
-                           cmap="Set2_r", s=60, marker='v', facecolors='none', edgecolors='black', linewidths=1.5,
-                           color=color_cells[cell])
+            # # draw border around human cells (in order to allow comparison with mouse cells)
+            # if cell in human_cells:
+            #     ntrial = spBins[cell].shape[0]
+            #     ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
+            #                result.iloc[trials:trials + ntrial]['tSNE2'],
+            #                cmap="Set2_r", s=60, marker='v', facecolors='none', edgecolors='black', linewidths=1.5,
+            #                color=color_cells[cell])
 
 
         else:
@@ -386,12 +290,12 @@ def rvCompare(files, cells_of_interest = []):
                        cmap="Set2_r", s=60,
                        color=color_cells[cell])
             # draw border around human cells (in order to allow comparison with mouse cells)
-            if cell in human_cells:
-                ntrial = spBins[cell].shape[0]
-                ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
-                           result.iloc[trials:trials + ntrial]['tSNE2'],
-                           cmap="Set2_r", s=60, facecolors='none', edgecolors='black', linewidths=1.5,
-                           color=color_cells[cell])
+            # if cell in human_cells:
+            #     ntrial = spBins[cell].shape[0]
+            #     ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
+            #                result.iloc[trials:trials + ntrial]['tSNE2'],
+            #                cmap="Set2_r", s=60, facecolors='none', edgecolors='black', linewidths=1.5,
+            #                color=color_cells[cell])
         trials += ntrial
 
     # make simple, bare axis lines through space:
