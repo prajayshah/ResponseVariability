@@ -5,6 +5,7 @@ import numpy as np
 import pickle
 import pandas as pd
 import datetime
+import matplotlib.pyplot as plt
 
 from sl_sync_params_v2 import *
 from spikeCorr import *
@@ -56,7 +57,7 @@ def NWBread(fpath, export_dir=str):
 
 
     # ---- Special fields
-    ap['sf.RMP_offset'] = int(nwbfile.notes.split()[-1])  # offset of the RMP
+    ap['sf.RMP_offset'] = float(nwbfile.notes.split()[-1])  # offset of the RMP
 
 
     return ap, nwbfile, current_clamp, current_stimulus
@@ -81,10 +82,10 @@ def respVariability(fpath, export_dir=''):
 
     V[cell_id] = current_clamp
 
-    # RMP offset correction
+    # -------- RMP offset correction
     num_pts_RMP = int(ap['rv']['prefix'] * 10000)
     nTrials = len(V[cell_id])
-    if type(ap['sf.RMP_offset']) == int:  # perform RMP offset correction if specified
+    if type(ap['sf.RMP_offset']) == float:  # perform RMP offset correction if specified
         V[cell_id] = V[cell_id] + ap['sf.RMP_offset']
 
     # compute and report resting membrane potential (RMP)
@@ -99,6 +100,7 @@ def respVariability(fpath, export_dir=''):
     I[cell_id] = current_stimulus
 
 
+    # --------- Begin analysis
     # sampling interval for each sweep in us
     si[cell_id] = 1e6/10000 # sampling rate was 10000 Hz
 
@@ -156,19 +158,33 @@ def respVariability(fpath, export_dir=''):
 
 
     # ------- UPDATE .csv file of Response Variability Results
-    df = pd.read_csv('/Volumes/HD1/White_noise/ResponseVariabilityCells.csv')
+    df = pd.read_csv('/Volumes/PrajayShah_1TB/Work/White noise/ResponseVariabilityCells.csv')
 
-    df_append = df.append({'cell_id': cell_id,
-                           'exp_condition': ap['cell.exp_condition'],
-                           'cell_type': ap['cell.type'],
-                           'gain': ap['cond.gain'],
-                           'dc': ap['cond.dc'],
-                           'firing rate': avgSpikeRate[cell_id],
-                           'analysis_date': datetime.datetime.now().strftime("%I:%M%p %B %d, %Y")
-                           }, ignore_index = True)
+    if int(cell_id) in df['cell_id'].tolist():
+        df.loc[df['cell_id'] == int(cell_id), 'RMP'] = cell_average
+        df.loc[df['cell_id'] == int(cell_id), 'firing rate'] = avgSpikeRate[cell_id]
+        df.loc[df['cell_id'] == int(cell_id), 'analysis_date'] = datetime.datetime.now().strftime("%I:%M%p %B %d, %Y")
 
+    df.to_csv('/Volumes/PrajayShah_1TB/Work/White noise/ResponseVariabilityCells.csv', index=False)
 
-    df_append.to_csv('/Volumes/HD1/White_noise/ResponseVariabilityCells.csv')
+    # ------- Graph the stimulus/response timeseries of the cell
+
+    t = np.arange(0, len(V[cell_id][0])) * (1.0/fs)
+    i = I[cell_id][0] # constant current stimulus for every cell
+    v = V[cell_id]
+
+    plt.style.use('ggplot')
+    fig, axes = plt.subplots(2, 1, sharex=True)
+    for sweep in range(len(v)-1):
+        axes[0].plot(t, v[sweep], color='black')
+    axes[0].plot(t, v[-1], color='red') # plot the last sweep in red
+    axes[1].plot(t, i, color='gray')
+    axes[0].set_ylabel("mV")
+    axes[1].set_ylabel("pA")
+    axes[1].set_xlabel("seconds")
+    plt.title('%s' % cell_id)
+    plt.show()
+
 
 ##
 
