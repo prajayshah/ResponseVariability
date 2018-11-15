@@ -7,7 +7,7 @@ def spikeCorr(sTimes, fs, delta, tList=None):
 
     '''
     :param sTimes:      Numpy array of spike times coded as 0s and 1s
-    :param fs:          Sampling rate
+    :param fs:          Sampling rate divided by wPoints - check runCell for evaluation of wPoints
     :param delta:       Window function in ms as per Galan et al 2008
     :param tList:
     :return: sCorr:     Spike correlations between all possible pairs in Matrix
@@ -27,6 +27,7 @@ def spikeCorr(sTimes, fs, delta, tList=None):
     dfunc = [1.] * int(dlength)
     sconv = [[0.] * nPoints] * nTrials
     sCorrVec = []
+    firing_rate_diff = []
 
     for i in range(0, nTrials):
         sconv[i] = np.convolve(sTimes[i], dfunc, 'same')
@@ -35,12 +36,22 @@ def spikeCorr(sTimes, fs, delta, tList=None):
         c = 0
         sCorr = np.array([[0.] * nTrials] * nTrials)
         sCorrVec = [0.] * int(nTrials*(nTrials-1)/2)
+        firing_rate_diff = [0.] * int(nTrials*(nTrials-1)/2)
         for i in range(0, nTrials):
             for j in range((i+1), nTrials):
+                print('Progress: %s out of %s' % (str(c), str(len(firing_rate_diff))))
                 r, prob = pearsonr(sconv[i], sconv[j])
                 sCorr[i, j] = r
                 sCorrVec[c] = sCorr[i][j]
+
+                # calculate firing rate difference between two trials
+                firing_rate1 = sum(sTimes[i])/(nPoints/1000)
+                firing_rate2 = sum(sTimes[j])/(nPoints/1000)
+                Hz_diff = firing_rate1 - firing_rate2
+                firing_rate_diff[c] = Hz_diff
+
                 c += 1
+
     else:
         # more than one cell passed to the function
         tListLength = len(tList)
@@ -58,7 +69,7 @@ def spikeCorr(sTimes, fs, delta, tList=None):
                 sconv2 = sconv[start_2:end_2, :]
                 sCorr = corr2cells(sconv1, sconv2)
 
-    return sCorr, sCorrVec
+    return sCorr, sCorrVec, firing_rate_diff
 
 
 def corr2cells(sconv1, sconv2):
@@ -66,6 +77,7 @@ def corr2cells(sconv1, sconv2):
     nTrials2 = len(sconv2[0])
 
     sCorr = [[0]*nTrials1] * nTrials2
+
 
     for i in range(0, nTrials1):
         for j in range(0, nTrials2):

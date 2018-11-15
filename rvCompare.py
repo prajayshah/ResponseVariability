@@ -14,7 +14,7 @@ from spikeCorr import *
 from sl_sync_params_v2 import *
 from generate_random_color import *
 
-def rvCompare(files = [], cells_of_interest = []):
+def rvCompare(files = [], cells_of_interest = [], export=None):
 
     '''
 
@@ -26,16 +26,19 @@ def rvCompare(files = [], cells_of_interest = []):
     ap_2 = sl_sync_params_v2()
 
     # specify and find files of interest - only for developing code
-    files = []; cells_of_interest = ['18o22014', '18220020']
-    files.append('/Volumes/HD1/White_noise/Human_tissue/Epilepsy cases/results/')  # insert full paths to cells
-    files.append('/Volumes/HD1/White_noise/Human_tissue/Tumor cases/results/')
+    #files = files; cells_of_interest = cells_of_interest
+    files.append('/Volumes/PrajayShah_1TB/Work/White noise/Human_tissue/Epilepsy cases/results')  # insert full paths to cells
+    files.append('/Volumes/PrajayShah_1TB/Work/White noise/Human_tissue/Tumor cases/results')
 
     ##
     fpaths = []
     for path in files:
-        for i in os.listdir(path):  ## try to use glob.glob with this
-            if i.endswith('.pkl'):
-                fpaths.append(os.path.join(path, i))
+        for cell in cells_of_interest:
+            for root, dirs, file in os.walk(path):
+                if (str(cell) + '_results.pkl') in file:
+                    # print(os.path.join(root, str(cell)))
+                    fpaths.append(os.path.join(root, (str(cell) + '_results.pkl')))
+
 
     # load up the results files for the first recording (to initialize the necessary results which are in dictionary formats)
     initial = fpaths[0]
@@ -69,6 +72,10 @@ def rvCompare(files = [], cells_of_interest = []):
     # cells of particular interest
 
     cells_to_analyze = cells_of_interest
+    cells_to_analyze = []
+    for cell in cells_of_interest:
+        cells_to_analyze.append(str(cell))
+
     if len(cells_to_analyze) == 0:
         cells_to_analyze = [*spBins]
 
@@ -78,9 +85,9 @@ def rvCompare(files = [], cells_of_interest = []):
         for j in range(len(spBins[i])):
             allspBins.append(spBins[i][j])
 
-    # ==================================================================================================================
+    # ------------------------------------------------------------------------------------------------------------------
     # Choosing random colors to assign to all cells - to be used uniquely for each cell throughout plotting
-    # ==================================================================================================================
+    # ------------------------------------------------------------------------------------------------------------------
 
 
     # generate_random_colors and assign to individual recordings
@@ -93,16 +100,14 @@ def rvCompare(files = [], cells_of_interest = []):
         color_cells[cells_to_analyze[i]] = colors[i]
 
 
-    ##
-    ## PLOTTING
-    ##
-    # ==================================================================================================================
+
+    # ------------------------------------------------------------------------------------------------------------------
     # Plot 1: Raster of all cells
     print('Plotting Raster')
-    # ==================================================================================================================
+    # ------------------------------------------------------------------------------------------------------------------
     plt.style.use('seaborn-white')
     fig, ax = plt.subplots(len(cells_to_analyze), 1, sharex=True, squeeze=False)
-    T = np.array(range(0, nPoints - 1)) / (fs / wPoints)
+    T = np.array(range(0, nPoints)) / (fs / wPoints)
 
     fig.subplots_adjust(hspace=0, wspace=0)
 
@@ -133,15 +138,18 @@ def rvCompare(files = [], cells_of_interest = []):
         ax[i,0].spines['left'].set_visible(False)
         ax[i,0].spines['right'].set_visible(False)
         #ax[i,0].spines['top'].set_visible(False)
+        ax[i,0].set_ylabel('%s' % cells_to_analyze[i], fontsize='small')
     ax[len(cells_to_analyze)-1,0].set_xlabel('Time (secs)')
     ax[len(cells_to_analyze)-1,0].set_xlim(T.min(), T.max())
     fig.suptitle('Raster of %d cells' % len(cells_to_analyze))
     fig.show()
+    if export != None:
+        fig.savefig((export+'/Raster.png'), bbox_inches='tight')
 
-    # ==================================================================================================================
+    # ------------------------------------------------------------------------------------------------------------------
     # Plot 2: PCA of all cells
     print('Plotting PCA')
-    # ==================================================================================================================
+    # ------------------------------------------------------------------------------------------------------------------
 
     # PCA calculation on all trials together
     pca = PCA(n_components=10).fit(allspBins)
@@ -204,6 +212,9 @@ def rvCompare(files = [], cells_of_interest = []):
     ax.set_title("PCA (%d cells)" % len(cells_to_analyze))
 
     fig.show()
+    if export != None:
+        fig.savefig((export+'/PCA.png'), bbox_inches='tight')
+
 
     # ==================================================================================================================
     # Plot 3: Pearson correlation of all cells
@@ -211,7 +222,7 @@ def rvCompare(files = [], cells_of_interest = []):
     # ==================================================================================================================
 
     ## calculate spike correlations across all trials in comparison - NOTE: allspBins was set earlier
-    sCorr, sCorrVec = spikeCorr(allspBins, fs/wPoints, ap_2['rv']['delta'])
+    sCorr, sCorrVec, firing_rate_diff = spikeCorr(allspBins, fs/wPoints, ap_2['rv']['delta'])
 
 
     ## determine row colors to use
@@ -248,80 +259,101 @@ def rvCompare(files = [], cells_of_interest = []):
     # sns.clustermap(sCorr_t, cmap='Greens', row_cluster=True, col_cluster=True, vmin=0, vmax=1, row_colors=[row_colors, row_colors2])
     # plt.show()
     # # w/o heirarchical clustering
-    sns.clustermap(sCorr_t, cmap='Greens', row_cluster=False, col_cluster=False, vmin=0, vmax=1, row_colors=[row_colors])
+    sns_plot = sns.clustermap(sCorr_t, cmap='Greens', row_cluster=False, col_cluster=False, vmin=0, vmax=1, row_colors=[row_colors])
+
+    if export != None:
+        sns_plot.savefig((export+'/correlation_matrix.png'), bbox_inches='tight')
+
     plt.show()
+    plt.close()
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Plot 4: pair-wise correlations of spike trains vs. difference in firing rate
+    # - done using firing rate difference calculated under spikeCorr above
+    # ------------------------------------------------------------------------------------------------------------------
+
+    plt.scatter(firing_rate_diff, sCorrVec)
+    plt.ylabel('Pairwise Correlation (r)')
+    plt.xlabel('Difference in firing rate (Hz)')
+    if export != None:
+        plt.savefig((export+'/firing_rate_v_r.png'), bbox_inches='tight')
+    plt.show()
+    plt.close()
+
+
+    # # ------------------------------------------------------------------------------------------------------------------
+    # # Plot 5: tSNE of all cells
+    # print('Plotting tSNE')
+    # # ------------------------------------------------------------------------------------------------------------------
+    #
+    # # PCA calculation on all trials together
+    # tsne = TSNE(n_components=3, perplexity=30).fit_transform(allspBins)
+    # result = pd.DataFrame(tsne, columns=['tSNE%i' % i for i in range(3)])
+    #
+    # # Plot tSNE
+    # plt.style.use('seaborn-white')
+    # fig = plt.figure()
+    # ax = Axes3D(fig)
+    # trials = 0  # ticker that counts trials from a cell to help make sure the next cell goes on the trials after the preceeding cell
+    # for cell in cells_to_analyze:
+    #     if cell in []:
+    #         ntrial = spBins[cell].shape[0]
+    #         ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
+    #                    result.iloc[trials:trials + ntrial]['tSNE2'],
+    #                    cmap="Set2_r", s=60, marker='v',
+    #                    color=color_cells[cell])
+    #         # # draw border around human cells (in order to allow comparison with mouse cells)
+    #         # if cell in human_cells:
+    #         #     ntrial = spBins[cell].shape[0]
+    #         #     ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
+    #         #                result.iloc[trials:trials + ntrial]['tSNE2'],
+    #         #                cmap="Set2_r", s=60, marker='v', facecolors='none', edgecolors='black', linewidths=1.5,
+    #         #                color=color_cells[cell])
+    #
+    #
+    #     else:
+    #         ntrial = spBins[cell].shape[0]
+    #         ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
+    #                    result.iloc[trials:trials + ntrial]['tSNE2'],
+    #                    cmap="Set2_r", s=60,
+    #                    color=color_cells[cell])
+    #         # draw border around human cells (in order to allow comparison with mouse cells)
+    #         # if cell in human_cells:
+    #         #     ntrial = spBins[cell].shape[0]
+    #         #     ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
+    #         #                result.iloc[trials:trials + ntrial]['tSNE2'],
+    #         #                cmap="Set2_r", s=60, facecolors='none', edgecolors='black', linewidths=1.5,
+    #         #                color=color_cells[cell])
+    #     trials += ntrial
+    #
+    # # make simple, bare axis lines through space:
+    # xAxisLine = ((min(result['tSNE0']), max(result['tSNE0'])), (0, 0), (0, 0))
+    # ax.plot(xAxisLine[0], xAxisLine[1], xAxisLine[2], 'r')
+    # yAxisLine = ((0, 0), (min(result['tSNE1']), max(result['tSNE1'])), (0, 0))
+    # ax.plot(yAxisLine[0], yAxisLine[1], yAxisLine[2], 'r')
+    # zAxisLine = ((0, 0), (0, 0), (min(result['tSNE2']), max(result['tSNE2'])))
+    # ax.plot(zAxisLine[0], zAxisLine[1], zAxisLine[2], 'r')
+    # # label the axes
+    # ax.set_xlabel("tSNE 1")
+    # ax.set_ylabel("tSNE 2")
+    # ax.set_zlabel("tSNE 3")
+    #
+    # # make the axis graph panes transparent
+    # ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    # ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    # ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    #
+    # ax.set_title("tSNE (%d cells)" % len(cells_to_analyze))
+    #
+    # fig.show()
 
 
 
-    # ==================================================================================================================
-    # Plot 4: tSNE of all cells
-    print('Plotting tSNE')
-    # ==================================================================================================================
-
-    # PCA calculation on all trials together
-    tsne = TSNE(n_components=3, perplexity=30).fit_transform(allspBins)
-    result = pd.DataFrame(tsne, columns=['tSNE%i' % i for i in range(3)])
-
-    # Plot tSNE
-    plt.style.use('seaborn-white')
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    trials = 0  # ticker that counts trials from a cell to help make sure the next cell goes on the trials after the preceeding cell
-    for cell in cells_to_analyze:
-        if cell in []:
-            ntrial = spBins[cell].shape[0]
-            ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
-                       result.iloc[trials:trials + ntrial]['tSNE2'],
-                       cmap="Set2_r", s=60, marker='v',
-                       color=color_cells[cell])
-            # # draw border around human cells (in order to allow comparison with mouse cells)
-            # if cell in human_cells:
-            #     ntrial = spBins[cell].shape[0]
-            #     ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
-            #                result.iloc[trials:trials + ntrial]['tSNE2'],
-            #                cmap="Set2_r", s=60, marker='v', facecolors='none', edgecolors='black', linewidths=1.5,
-            #                color=color_cells[cell])
 
 
-        else:
-            ntrial = spBins[cell].shape[0]
-            ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
-                       result.iloc[trials:trials + ntrial]['tSNE2'],
-                       cmap="Set2_r", s=60,
-                       color=color_cells[cell])
-            # draw border around human cells (in order to allow comparison with mouse cells)
-            # if cell in human_cells:
-            #     ntrial = spBins[cell].shape[0]
-            #     ax.scatter(result.iloc[trials:trials + ntrial]['tSNE0'], result.iloc[trials:trials + ntrial]['tSNE1'],
-            #                result.iloc[trials:trials + ntrial]['tSNE2'],
-            #                cmap="Set2_r", s=60, facecolors='none', edgecolors='black', linewidths=1.5,
-            #                color=color_cells[cell])
-        trials += ntrial
-
-    # make simple, bare axis lines through space:
-    xAxisLine = ((min(result['tSNE0']), max(result['tSNE0'])), (0, 0), (0, 0))
-    ax.plot(xAxisLine[0], xAxisLine[1], xAxisLine[2], 'r')
-    yAxisLine = ((0, 0), (min(result['tSNE1']), max(result['tSNE1'])), (0, 0))
-    ax.plot(yAxisLine[0], yAxisLine[1], yAxisLine[2], 'r')
-    zAxisLine = ((0, 0), (0, 0), (min(result['tSNE2']), max(result['tSNE2'])))
-    ax.plot(zAxisLine[0], zAxisLine[1], zAxisLine[2], 'r')
-    # label the axes
-    ax.set_xlabel("tSNE 1")
-    ax.set_ylabel("tSNE 2")
-    ax.set_zlabel("tSNE 3")
-
-    # make the axis graph panes transparent
-    ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-    ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-    ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
-
-    ax.set_title("tSNE (%d cells)" % len(cells_to_analyze))
-
-    fig.show()
-
-    # ==================================================================================================================
+    # ------------------------------------------------------------------------------------------------------------------
     print('Done!')
-    # ==================================================================================================================
+    # ------------------------------------------------------------------------------------------------------------------
 
 
 

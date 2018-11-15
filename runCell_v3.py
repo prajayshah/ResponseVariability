@@ -151,10 +151,7 @@ def respVariability(fpath, export_dir=''):
         sCorr_, sCorrVec_ = spikeCorr(spBins[cell_id], fs/wPoints, ap['rv']['delta'])        # note that the pearson correlation values are slightly discordant between Matlab and python
         sCorr[cell_id] = sCorr_; sCorrVec[cell_id] = sCorrVec_
 
-    # save results
-    pickle.dump([sCorr, sCorrVec, V, I, spBins, ap, fs, wPoints, STA,
-                 avgSpikeRate, G, phi, freq],
-                open((export_dir + cell_id + '_results.pkl'), 'wb'))
+
 
 
     # ------- UPDATE .csv file of Response Variability Results
@@ -183,8 +180,13 @@ def respVariability(fpath, export_dir=''):
     axes[1].set_ylabel("pA")
     axes[1].set_xlabel("seconds")
     plt.title('%s' % cell_id)
-    plt.show()
 
+    # save results
+    pickle.dump([sCorr, sCorrVec, V, I, spBins, ap, fs, wPoints, STA,
+                 avgSpikeRate, G, phi, freq],
+                open((export_dir + cell_id + '_results.pkl'), 'wb'))
+
+    print('')
 
 ##
 
